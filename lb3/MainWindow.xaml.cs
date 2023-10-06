@@ -33,7 +33,10 @@ namespace lb3
             Viewport3D viewport = new Viewport3D();
             dock.Children.Add(viewport);
 
-            drawTor(new Point3D(0, 0, 0), 0.7, 0.3, 40, 30, Colors.Tomato, viewport);
+            drawTor(new Point3D(0, 0, 0), 1, 0.2, 40, 30, Colors.Tomato, viewport,true);
+            drawTor(new Point3D(1.5, 0, 0), 1, 0.2, 40, 30, Colors.Blue, viewport,false);
+            drawTor(new Point3D(3, 0, 0), 1, 0.2, 40, 30, Colors.Tomato, viewport, true);
+            drawTor(new Point3D(4.5, 0, 0), 1, 0.2, 40, 30, Colors.Blue, viewport, false);
 
             // Create another ModelVisual3D for light
             ModelVisual3D modvis = new ModelVisual3D();
@@ -56,7 +59,7 @@ namespace lb3
         }
 
         //метод возвращает точку по заданным радиусам и углам
-        public Point3D getPositionTor(double R, double r, double A, double B)
+        public Point3D getPositionTor(double R, double r, double A, double B, bool flag)
         {
 
             double sinB = Math.Sin(B * Math.PI / 180);
@@ -66,8 +69,18 @@ namespace lb3
 
             Point3D point = new Point3D();
             point.X = (R + r * cosA) * cosB;
-            point.Y = r * sinA;
-            point.Z = -(R + r * cosA) * sinB;
+            if (flag)
+            {
+                point.Y = r * sinA;
+                point.Z = -(R + r * cosA) * sinB;
+            }
+            else
+            {
+                point.Y = -(R + r * cosA) * sinB;
+                point.Z = r * sinA;
+            } 
+            
+
 
             return point;
         }
@@ -93,7 +106,7 @@ namespace lb3
             viewport.Children.Add(model);
         }
 
-        public void drawTor(Point3D center, double R, double r, int N, int n, Color color, Viewport3D viewport)
+        public void drawTor(Point3D center, double R, double r, int N, int n, Color color, Viewport3D viewport, bool flag)
         {
             if (n < 2 || N < 2)
             {
@@ -107,7 +120,7 @@ namespace lb3
             {
                 for (int j = 0; j < n; j++)
                 {
-                    points[i, j] = getPositionTor(R, r, i * 360 / (N - 1), j * 360 / (n - 1));
+                    points[i, j] = getPositionTor(R, r, i * 360 / (N - 1), j * 360 / (n - 1), flag);
                     points[i, j] += (Vector3D)center;
                 }
             }
@@ -115,7 +128,7 @@ namespace lb3
             Point3D[] p = new Point3D[4];
             for (int i = 0; i < N - 1; i++)
             {
-                for (int j = 0; j < n/2 - 1; j++)
+                for (int j = 0; j < n - 1; j++)
                 {
                     p[0] = points[i, j];
                     p[1] = points[i + 1, j];
