@@ -114,7 +114,7 @@ namespace lb3
             }
 
             // Fill the TriangleIndices collection.
-            for (int stack = 0; stack < stacks ; stack++)
+            for (int stack = 0; stack < stacks/2 ; stack++)
             {
                 for (int slice = 0; slice < slices ; slice++)
                 {
