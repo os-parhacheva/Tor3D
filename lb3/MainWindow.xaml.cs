@@ -25,24 +25,54 @@ namespace lb3
         public MainWindow()
         {
             InitializeComponent();
-            Title = "Simple 3D Scene in Code";
+            Title = "Beachball Sphere";
 
             // Make DockPanel content of window.
             DockPanel dock = new DockPanel();
             Content = dock;
             Viewport3D viewport = new Viewport3D();
             dock.Children.Add(viewport);
+          
+            MeshGeometry3D mesh = GenerateSphere(new Point3D(0, 0, 0), 1, 20, 40);
+            
+            mesh.Freeze();
 
-            drawTor(new Point3D(0, 0, 0), 0.7, 0.3, 40, 30, Colors.Tomato, viewport);
+            // Define a brush for the sphere.
+            Brush[] brushes = new Brush[4] { Brushes.White, Brushes.Blue,
+                                             Brushes.Yellow, Brushes.Red};
+            DrawingGroup drawgrp = new DrawingGroup();
 
-            // Create another ModelVisual3D for light
+            for (int i = 0; i < brushes.Length; i++)
+            {
+                RectangleGeometry rectgeo =
+                    new RectangleGeometry(new Rect(10 * i, 0, 10, 60));
+
+                GeometryDrawing geodraw =
+                    new GeometryDrawing(brushes[i], null, rectgeo);
+
+                drawgrp.Children.Add(geodraw);
+            }
+            DrawingBrush drawbrsh = new DrawingBrush(drawgrp);
+            drawbrsh.Freeze();           
+
+            GeometryModel3D geomod = new GeometryModel3D();
+            geomod.Geometry = mesh;
+            geomod.Material = new DiffuseMaterial(drawbrsh);
+            geomod.BackMaterial = new DiffuseMaterial(Brushes.Crimson);
+
             ModelVisual3D modvis = new ModelVisual3D();
-            modvis.Content = new AmbientLight(Colors.White);
+            modvis.Content = geomod;
             viewport.Children.Add(modvis);
 
             // Create another ModelVisual3D for light
+            Model3DGroup modgrp = new Model3DGroup();
+            modgrp.Children.Add(new AmbientLight(Color.FromRgb(128, 128, 128)));
+            modgrp.Children.Add(
+                 new DirectionalLight(Color.FromRgb(128, 128, 128),
+                                          new Vector3D(2, -3, -1)));
+
             modvis = new ModelVisual3D();
-            modvis.Content = new AmbientLight(Colors.White);
+            modvis.Content = modgrp;
             viewport.Children.Add(modvis);
 
             // Create the camera
@@ -55,78 +85,59 @@ namespace lb3
 
         }
 
-        //метод возвращает точку по заданным радиусам и углам
-        public Point3D getPositionTor(double R, double r, double A, double B)
+
+        MeshGeometry3D GenerateSphere(Point3D center, double radius, int slices, int stacks)
         {
-
-            double sinB = Math.Sin(B * Math.PI / 180);
-            double cosB = Math.Cos(B * Math.PI / 180);
-            double sinA = Math.Sin(A * Math.PI / 180);
-            double cosA = Math.Cos(A * Math.PI / 180);
-
-            Point3D point = new Point3D();
-            point.X = (R + r * cosA) * cosB;
-            point.Y = r * sinA;
-            point.Z = -(R + r * cosA) * sinB;
-
-            return point;
-        }
-        //метод построения треугольного сегмента
-        public static void drawTriangle(Point3D p0, Point3D p1, Point3D p2, Color color, Viewport3D viewport)
-        {
+            // Create the MeshGeometry3D.
             MeshGeometry3D mesh = new MeshGeometry3D();
 
-            mesh.Positions.Add(p0);
-            mesh.Positions.Add(p1);
-            mesh.Positions.Add(p2);
-
-            mesh.TriangleIndices.Add(0);
-            mesh.TriangleIndices.Add(1);
-            mesh.TriangleIndices.Add(2);
-          
-            Material material = new DiffuseMaterial(new SolidColorBrush(color));
-
-            GeometryModel3D geometry = new GeometryModel3D(mesh, material);
-            ModelUIElement3D model = new ModelUIElement3D();
-            model.Model = geometry;
-
-            viewport.Children.Add(model);
-        }
-
-        public void drawTor(Point3D center, double R, double r, int N, int n, Color color, Viewport3D viewport)
-        {
-            if (n < 2 || N < 2)
+            // Fill the Position, Normals, and TextureCoordinates collections.
+            for (int stack = 0; stack <= stacks; stack++)
             {
-                return;
-            }
+                double phi = Math.PI / 2 - stack * Math.PI / stacks;
+                double y = radius * Math.Sin(phi);
+                double scale = -radius * Math.Cos(phi);
 
-            Model3DGroup tor = new Model3DGroup();
-            Point3D[,] points = new Point3D[N, n];
-
-            for (int i = 0; i < N; i++)
-            {
-                for (int j = 0; j < n; j++)
+                for (int slice = 0; slice <= slices; slice++)
                 {
-                    points[i, j] = getPositionTor(R, r, i * 360 / (N - 1), j * 360 / (n - 1));
-                    points[i, j] += (Vector3D)center;
+                    double theta = slice * 2 * Math.PI / slices;
+                    double x = scale * Math.Sin(theta);
+                    double z = scale * Math.Cos(theta);
+
+                    Vector3D normal = new Vector3D(x, y, z);
+                    mesh.Normals.Add(normal);
+                    mesh.Positions.Add(normal + center);
+                    mesh.TextureCoordinates.Add(
+                            new Point((double)slice / slices,
+                                      (double)stack / stacks));
                 }
             }
 
-            Point3D[] p = new Point3D[4];
-            for (int i = 0; i < N - 1; i++)
+            // Fill the TriangleIndices collection.
+            for (int stack = 0; stack < stacks ; stack++)
             {
-                for (int j = 0; j < n/2 - 1; j++)
+                for (int slice = 0; slice < slices ; slice++)
                 {
-                    p[0] = points[i, j];
-                    p[1] = points[i + 1, j];
-                    p[2] = points[i + 1, j + 1];
-                    p[3] = points[i, j + 1];
-                    drawTriangle(p[0], p[1], p[2], color, viewport);
-                    drawTriangle(p[2], p[3], p[0], color, viewport);
+                    int n = slices + 1; // Keep the line length down.
 
+                    if (stack != 0)
+                    {
+                        mesh.TriangleIndices.Add((stack + 0) * n + slice);
+                        mesh.TriangleIndices.Add((stack + 1) * n + slice);
+                        mesh.TriangleIndices.Add((stack + 0) * n + slice + 1);
+                    }
+                    if (stack != stacks -1)
+                    {
+                        mesh.TriangleIndices.Add((stack + 0) * n + slice + 1);
+                        mesh.TriangleIndices.Add((stack + 1) * n + slice);
+                        mesh.TriangleIndices.Add((stack + 1) * n + slice + 1);
+                    }
                 }
             }
+            return mesh;
         }
+
+       
 
 
 
